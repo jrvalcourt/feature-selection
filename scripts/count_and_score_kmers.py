@@ -4,10 +4,7 @@ import string
 import sys
 import numpy as np
 from numbers import Number
-import percache
-import matplotlib
-matplotlib.use('Qt5Agg')
-import matplotlib.pyplot as plt
+import hashlib
 
 # remove all non-letter characters and make them all uppercase
 def clean_line(l):
@@ -68,15 +65,21 @@ def add_to_count_dict(d, kmer):
 
 # returns a dictionary with the frequency counts of every kmer in the corpuses
 # contained across the given files
-def count_kmers(files, K):
+def count_kmers(files, maxK, verbose=False):
     counts = {}
-    for ii in range(K):
-        counts[ii+1] = {}
+    ks = list(np.linspace(2, maxK, num=((maxK-2)//2)+1, dtype='int32'))
+    newks = ks.copy()
+    for k in ks:
+        if not k//2 in newks:
+            newks.append(k//2)
+    ks = sorted(newks)
+    for ii in ks:
+        counts[ii] = {}
     total_kmers = 0
-    for kmer in yield_kmers(files, K, verbose=True):
+    for kmer in yield_kmers(files, maxK, verbose=verbose):
         total_kmers += 1
-        for ii in range(K):
-            add_to_count_dict(counts[ii+1], kmer[:ii+1])
+        for ii in ks:
+            add_to_count_dict(counts[ii], kmer[:ii])
     return counts, total_kmers
 
 # retrieve the count associated with the given kmer
@@ -112,24 +115,8 @@ def score_kmers(files, maxK, counts, total_kmers):
             results[K].append(log_p_ratio)
     return results
 
-if __name__ == '__main__':
-    ALPHABET = string.ascii_uppercase
-    maxK = int(sys.argv[1])
-    if not maxK % 2 == 0:
-        sys.exit()
-    print(f"Using maxK={maxK}")
-    test_file = sys.argv[2]
-    train_files = sys.argv[3:]
-    counts, total_kmers = count_kmers(train_files, maxK)
-    results = score_kmers([test_file], maxK, counts, total_kmers)
-    
-    for ii, K in enumerate(np.linspace(2, maxK, num=((maxK-2)//2)+1, dtype='int32')):
-        plt.plot(np.array(range(len(results[K]))) + ii + 0.5, 
-                 results[K],
-                 label=f'k = {K}')
-    plt.legend()
-    for ii, c in enumerate(yield_all_text([test_file])):
-        plt.text(ii, 0, c, ha='center')
-    plt.ylabel('log(p(full kmer) / (p(firsthalf) * p(secondhalf)))')
-    plt.xlabel('position')
-    plt.show()
+def get_file_list_hash(files):
+    flist = '!!'.join(files)
+    file_list_hash = hashlib.md5(flist.encode('UTF-8')).hexdigest()
+    return file_list_hash
+
