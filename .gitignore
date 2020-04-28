@@ -3,3 +3,4 @@ test_sets/*
 test_set.txt.gz
 plots/*
 trained_models/*
+scripts/__pycache__
