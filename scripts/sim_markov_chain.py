@@ -28,6 +28,8 @@ def simulate(prob, alphabet, N=1000):
         idxs = tuple([char2idx[x] for x in last_tokens])
         next_token = draw_token(prob[idxs], alphabet)
         sim_text = sim_text + next_token
+        last_tokens.append(next_token)
+        last_tokens.pop(0)
     return sim_text
 
 if __name__ == '__main__':
