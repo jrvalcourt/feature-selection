@@ -30,6 +30,11 @@ def next_token(kmer, sorted_alphabet):
 
 def build_markov_chain(kmers_stream, alphabet, order=1):
 
+    # need a mapping from token to index in the transition matrix
+    char2idx = {}
+    for ii, c in enumerate(alphabet):
+        char2idx[c] = ii
+
     # the sorted function is guaranteed to be stable, so we can sort 
     # alphabetically then by length to get a list sorted by length 
     # and also alphabetically within each length
@@ -42,12 +47,6 @@ def build_markov_chain(kmers_stream, alphabet, order=1):
 
     # store the transtion matrix (or tensor)
     transition_counts = np.zeros([len(alphabet)] * (order + 1), dtype='int64')
-
-    # when evaluating on test set data
-    # need a mapping from token to index in the transition matrix
-    char2idx = {}
-    for ii, c in enumerate(alphabet):
-        char2idx[c] = ii
 
     skip = 0
     # hold on to the last n tokens, where n is the order of the model + 1
@@ -79,9 +78,12 @@ def count_matrix_to_prob(n):
     n = n + 1
 
     # need to get the sum of counts across all possible decisions 
-    ndims = n.shape
-    sums = np.sum(n, axis=ndims-1).reshape(n.shape[:-1])
-    reps = ([1] * (ndims - 1)).append(n.shape[-1])
+    ndims = len(n.shape)
+    new_shape = list(n.shape[:-1])
+    new_shape.append(1)
+    sums = np.sum(n, axis=ndims-1).reshape(new_shape)
+    reps = [1] * (ndims - 1)
+    reps.append(n.shape[-1])
     tiled = np.tile(sums, reps)
 
     # divide the counts by the sum to get the probability
