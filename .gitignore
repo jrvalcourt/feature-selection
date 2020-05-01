@@ -4,3 +4,5 @@ test_set.txt.gz
 plots/*
 trained_models/*
 scripts/__pycache__
+alphabets/*
+markov_model_counts/*
