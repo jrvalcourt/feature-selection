@@ -90,29 +90,35 @@ def get_count(d, kmer):
     assert isinstance(temp, Number)
     return temp
     
-# score the kmers from a given file
-def score_kmers(files, maxK, counts, total_kmers):
+# score the kmers from a given file over a range of K values
+def score_kmers_krange(files, maxK, counts, total_kmers):
     ks = np.linspace(2, maxK, num=((maxK-2)//2)+1, dtype='int32')
     results = {}
     for K in ks:
-        results[K] = []
-        for kmer in yield_kmers(files, K):
-            first_half  = kmer[:K//2]
-            second_half = kmer[K//2:]
-            
-            # retrieve the number of times we saw the full kmer and each half
-            n_full = get_count(counts[K],    kmer)
-            n_1    = get_count(counts[K//2], first_half)
-            n_2    = get_count(counts[K//2], second_half)
+        results[K] = score_kmers(files, K, counts, total_kmers)
+    return results
 
-            # figure out the probabilities
-            # we have to work in log space for probs to prevent underflow
-            log_p_kmer = np.log(n_full) - np.log(total_kmers)
-            log_p_1    = np.log(n_1)    - np.log(total_kmers)
-            log_p_2    = np.log(n_2)    - np.log(total_kmers)
-            log_p_ratio = log_p_kmer - (log_p_1 + log_p_2)
+# score the kmers from a given file
+def score_kmers(files, K, counts, total_kmers):
+    results = []
+    for kmer in yield_kmers(files, K):
+        first_half  = kmer[:K//2]
+        second_half = kmer[K//2:]
+        
+        # retrieve the number of times we saw the full kmer and each half
+        n_full = get_count(counts[K],    kmer)
+        n_1    = get_count(counts[K//2], first_half)
+        n_2    = get_count(counts[K//2], second_half)
 
-            results[K].append(log_p_ratio)
+        # figure out the probabilities
+        # we have to work in log space for probs to prevent underflow
+        log_p_kmer = np.log(n_full) - np.log(total_kmers)
+        log_p_1    = np.log(n_1)    - np.log(total_kmers)
+        log_p_2    = np.log(n_2)    - np.log(total_kmers)
+        log_p_ratio = log_p_kmer - (log_p_1 + log_p_2)
+
+        results.append(log_p_ratio)
+
     return results
 
 def get_file_list_hash(files):

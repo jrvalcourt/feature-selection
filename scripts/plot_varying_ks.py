@@ -13,7 +13,8 @@ if __name__ == '__main__':
 
     maxK = int(os.path.basename(train_data).split('__')[1][1:])
     counts, total_kmers = pickle.load(open(train_data, 'rb'))
-    results = count_and_score_kmers.score_kmers([test_file], maxK, counts, total_kmers)
+    results = count_and_score_kmers.score_kmers_krange([test_file], maxK, counts, total_kmers)
+    print(results)
 
     plt.figure(figsize=(12,6))
     for ii, K in enumerate(np.linspace(2, maxK, num=((maxK-2)//2)+1, dtype='int32')):
