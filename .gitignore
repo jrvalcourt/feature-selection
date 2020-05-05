@@ -6,4 +6,4 @@ trained_models/*
 scripts/__pycache__
 alphabets/*
 markov_model_counts/*
-computational_meeting.key
+slide_decks/*
