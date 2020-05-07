@@ -2,6 +2,7 @@ import pickle
 import sys
 from build_markov_chain import count_matrix_to_prob
 from build_markov_chain import load_alphabet
+from count_and_score_kmers import get_char2idx
 from random import random
 import numpy as np
 
@@ -18,9 +19,7 @@ def draw_token(prob, alphabet):
 
 def simulate(prob, alphabet, N=1000):
     # need a mapping from token to index in the transition matrix
-    char2idx = {}
-    for ii, c in enumerate(alphabet):
-        char2idx[c] = ii
+    char2idx = get_char2idx(alphabet)
     
     last_tokens = seed
     sim_text = ''.join(seed)

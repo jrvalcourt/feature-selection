@@ -14,6 +14,12 @@ def clean_line(l):
     l = regex.sub('', l)
     return l
 
+def get_char2idx(alphabet):
+    char2idx = {}
+    for ii, c in enumerate(alphabet):
+        char2idx[c] = ii
+    return char2idx
+
 # a generator that concatenates a bunch of files and yields them as a series 
 # of k-mers consisting of just uppercase letters
 def yield_kmers(files, K, verbose=False):
@@ -67,7 +73,8 @@ def add_to_count_dict(d, kmer):
 # contained across the given files
 def count_kmers(files, maxK, verbose=False):
     counts = {}
-    ks = list(np.linspace(2, maxK, num=((maxK-2)//2)+1, dtype='int32'))
+    #ks = list(np.linspace(2, maxK, num=((maxK-2)//2)+1, dtype='int32'))
+    ks = list(np.array(range(maxK)) + 1)
     newks = ks.copy()
     for k in ks:
         if not k//2 in newks:

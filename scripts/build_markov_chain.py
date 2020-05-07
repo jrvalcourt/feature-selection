@@ -1,6 +1,7 @@
 import sys
 from count_and_score_kmers import yield_kmers
 from count_and_score_kmers import get_file_list_hash
+from count_and_score_kmers import get_char2idx
 import numpy as np
 import os
 import pickle
@@ -31,9 +32,7 @@ def next_token(kmer, sorted_alphabet):
 def build_markov_chain(kmers_stream, alphabet, order=1):
 
     # need a mapping from token to index in the transition matrix
-    char2idx = {}
-    for ii, c in enumerate(alphabet):
-        char2idx[c] = ii
+    char2idx = get_char2idx(alphabet)
 
     # the sorted function is guaranteed to be stable, so we can sort 
     # alphabetically then by length to get a list sorted by length 

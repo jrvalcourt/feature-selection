@@ -3,6 +3,7 @@ import pickle
 import hashlib
 import os
 import sys
+from count_and_score_kmers import count_kmers
 
 if __name__ == '__main__':
 
@@ -19,11 +20,11 @@ if __name__ == '__main__':
     train_files = sys.argv[3:]
     file_list_hash = count_and_score_kmers.get_file_list_hash(train_files) 
 
-    tmp_path = os.path.join(outdir, f"{name}__k{maxK}__" + file_list_hash + '.pkl')
+    tmp_path = os.path.join(outdir, f"{name}__k{maxK}__" + 
+            file_list_hash + '.pkl')
     if not os.path.exists(tmp_path):
         print(f"Training using maxK={maxK}")
-        counts, total_kmers = count_and_score_kmers.count_kmers(train_files, 
-                maxK, verbose=True)
+        counts, total_kmers = count_kmers(train_files, maxK, verbose=True)
         print(f"Storing in {tmp_path}...")
         pickle.dump((counts, total_kmers), open(tmp_path, 'wb'))
         print("Done.")
