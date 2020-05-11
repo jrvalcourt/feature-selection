@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
             # trim the chunks if they're too long for the 
             # kmers we counted
-            while len(chunk1) + len(chunk2) > 10:
+            while len(chunk1) + len(chunk2) > maxK:
                 if len(chunk1) > len(chunk2):
                     chunk1 = chunk1[1:]
                 else:
