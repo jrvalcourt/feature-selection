@@ -39,6 +39,12 @@ def yield_kmers(files, K, verbose=False):
         print('\rDone.                        ')
 
 # a generator that concatenates a bunch of files and yields them as a series 
+# of k-mers consisting of just uppercase letters
+def yield_kmers_corpus(corpus, K, verbose=False):
+    for ii in range(len(corpus) - K):
+        yield corpus[ii:ii+K]
+
+# a generator that concatenates a bunch of files and yields them as a series 
 # of characters
 def yield_all_text(files, verbose=False):
     queue = []
@@ -89,6 +95,25 @@ def count_kmers(files, maxK, verbose=False):
             add_to_count_dict(counts[ii], kmer[:ii])
     return counts, total_kmers
 
+# returns a dictionary with the frequency counts of every kmer in the corpuses
+# contained in the given corpus list
+def count_kmers_corpus(corpus, maxK, verbose=False):
+    counts = {}
+    ks = list(np.array(range(maxK)) + 1)
+    newks = ks.copy()
+    for k in ks:
+        if not k//2 in newks:
+            newks.append(k//2)
+    ks = sorted(newks)
+    for ii in ks:
+        counts[ii] = {}
+    total_kmers = 0
+    for kmer in yield_kmers_corpus(corpus, maxK, verbose=verbose):
+        total_kmers += 1
+        for ii in ks:
+            add_to_count_dict(counts[ii], kmer[:ii])
+    return counts, total_kmers
+
 # retrieve the count associated with the given kmer
 def get_count(d, kmer):
     temp = d
@@ -127,6 +152,31 @@ def score_kmers(files, K, counts, total_kmers):
         results.append(log_p_ratio)
 
     return results
+
+# score the kmers from a string held in memory
+def score_kmers_corpus(corpus, K, counts, total_kmers):
+    results = []
+    for ii in range(len(corpus) - K):
+        kmer = corpus[ii:ii+K]
+        first_half  = kmer[:K//2]
+        second_half = kmer[K//2:]
+        
+        # retrieve the number of times we saw the full kmer and each half
+        n_full = get_count(counts[K],    kmer)
+        n_1    = get_count(counts[K//2], first_half)
+        n_2    = get_count(counts[K//2], second_half)
+
+        # figure out the probabilities
+        # we have to work in log space for probs to prevent underflow
+        log_p_kmer = np.log(n_full) - np.log(total_kmers)
+        log_p_1    = np.log(n_1)    - np.log(total_kmers)
+        log_p_2    = np.log(n_2)    - np.log(total_kmers)
+        log_p_ratio = log_p_kmer - (log_p_1 + log_p_2)
+
+        results.append(log_p_ratio)
+
+    return results
+
 
 def get_file_list_hash(files):
     flist = '!!'.join(files)
