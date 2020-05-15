@@ -71,6 +71,55 @@ def build_markov_chain(kmers_stream, alphabet, order=1):
 
     return transition_counts
 
+def build_markov_chain_corpus(corpus, alphabet, order=1):
+
+    # need a mapping from token to index in the transition matrix
+    char2idx = get_char2idx(alphabet)
+
+    # the sorted function is guaranteed to be stable, so we can sort 
+    # alphabetically then by length to get a list sorted by length 
+    # and also alphabetically within each length
+    sorted_alphabet = sorted(alphabet)
+    sorted_alphabet = sorted(sorted_alphabet, 
+            key=lambda x: len(x), reverse=True)
+
+    # need this to make sure that our kmers are longer than the tokens
+    max_token_length = max([len(x) for x in alphabet])
+
+    # store the transtion matrix (or tensor)
+    transition_counts = np.zeros([len(alphabet)] * (order + 1), dtype='int64')
+
+    skip = 0
+    # hold on to the last n tokens, where n is the order of the model + 1
+    last_tokens = []
+    for kmer in kmers_stream:
+        if skip > 0:
+            skip = skip - 1
+            continue
+        if not max_token_length <= len(kmer):
+            raise Exception("The kmers must be longer than the longest token")
+
+        if skip > 0:
+            skip = skip - 1
+            continue
+
+        curr_token, skip = next_token(kmer, alphabet)
+        last_tokens.append(curr_token)
+        if len(last_tokens) < order + 1:
+            continue
+        idxs = tuple([char2idx[x] for x in last_tokens])
+        transition_counts[idxs] += 1
+        last_tokens.pop(0)
+
+    return transition_counts
+
+def tokenize_corpus(corpus, alphabet):
+    for token in alphabet:
+        for ii in range(len(corpus)):
+            if corpus[ii:ii+len(token)] == token:
+                corpus[ii:ii+len(token)] = [token]
+    return corpus
+
 def count_matrix_to_prob(n):
 
     # start with some LaPlace smoothing by adding one to all counts

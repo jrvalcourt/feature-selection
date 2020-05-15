@@ -4,10 +4,14 @@ from count_and_score_kmers import yield_all_text
 from count_and_score_kmers import get_count
 from count_and_score_kmers import count_kmers_corpus
 from build_markov_chain import load_alphabet
+from build_markov_chain import build_markov_chain_corpus
 import sys
 import pickle
 import os
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 def candidate_breaks(log_p_trace, offset):
     log_p_trace = np.insert(log_p_trace, 0, [0] * offset)
@@ -20,6 +24,7 @@ def candidate_breaks(log_p_trace, offset):
 
 def guess_next_token(corpus, breaks, alphabet, counts, total_kmers):
     words = {}
+    betas = []
     for ii in range(len(breaks) - 1):
         if ii < 1:
             continue
@@ -48,7 +53,8 @@ def guess_next_token(corpus, breaks, alphabet, counts, total_kmers):
                 else:
                     chunk2 = chunk2[:-1]
 
-            count_full = get_count(counts[len(chunk1 + chunk2)], chunk1 + chunk2)
+            count_full = get_count(counts[len(chunk1 + chunk2)], 
+                    chunk1 + chunk2)
             count_1    = get_count(counts[len(chunk1)], chunk1)
             count_2    = get_count(counts[len(chunk2)], chunk2)
 
@@ -63,6 +69,7 @@ def guess_next_token(corpus, breaks, alphabet, counts, total_kmers):
                 min_chunk1 = chunk1
                 min_chunk2 = chunk2
 
+        betas.append(min_log_p_ratio)
         breaks[ii] = min_b_curr
         candidate_word = '_'.join(corpus[b_prev:b_curr])
         if not candidate_word in words:
@@ -71,8 +78,9 @@ def guess_next_token(corpus, breaks, alphabet, counts, total_kmers):
 
     w_list = [k for k in words]
     w_counts = [words[k] for k in words]
-    sorted_words = sorted(zip(w_list, w_counts), key=lambda x: x[1], reverse=True)
-    return (sorted_words[0][0].split('_'), sorted_words[0][1])
+    sorted_words = sorted(zip(w_list, w_counts), key=lambda x: x[1], 
+            reverse=True)
+    return (sorted_words[0][0].split('_'), sorted_words[0][1], betas)
 
 def replace_token_in_corpus(corpus, new_token):
     for ii in range(len(corpus)):
@@ -88,12 +96,78 @@ if __name__ == '__main__':
     alphabet = load_alphabet(alphabet_file)
     corpus = [x for x in yield_all_text([input_file])]
 
-    for ii in range(100):
+    save_points = [0, 1, 2, 5, 10, 20, 50, 75, 100, 125, 150, 175, 200, 300, 400, 
+                   500, 600, 750, 1000, 1500, 2000]
+
+    # lists to hold the descriptive stats at each round
+    stds = []
+    means = []
+    medians = []
+    cvs = []
+    frac_lt_zero = []
+
+    ii = -1
+    while True:
+        plt.close()
+        ii += 1
         char2idx = get_char2idx(alphabet)
         counts, total_kmers = count_kmers_corpus(corpus, maxK, alphabet)
         results = score_kmers_corpus(corpus, maxK, counts, total_kmers)
         breaks = candidate_breaks(results, maxK//2)
-        new_token, n = guess_next_token(corpus, breaks, alphabet, counts, total_kmers)
+        new_token, n, betas = guess_next_token(corpus, breaks, alphabet, 
+                counts, total_kmers)
         corpus = replace_token_in_corpus(corpus, new_token)
         alphabet.append(''.join(new_token))
-        print(new_token, n)
+        print(ii, new_token, n)
+        sys.stdout.flush()
+
+        betas = np.array(betas)
+
+        stds.append(np.std(betas))
+        means.append(np.mean(betas))
+        medians.append(np.median(betas))
+        cvs.append(np.std(betas) / np.mean(betas))
+        frac_lt_zero.append(np.sum(betas < 0)/len(betas))
+
+        if (ii in save_points) or (ii % 1000 == 0):
+            plt.figure(figsize=(12,6))
+            plt.hist(betas, bins=np.linspace(-4, 20, num=100))
+            plt.savefig(f'plots/beta_hists/beta_hist_{ii}.png', dpi=300)
+            plt.close()
+            
+            if ii < 5:
+                continue
+
+            plt.figure()
+            plt.plot(range(ii+1), stds, 'k-')
+            plt.savefig(f'plots/beta_stds/beta_stds_{ii}.png', dpi=300)
+            plt.close()
+
+            plt.figure()
+            plt.plot(range(ii+1), means, 'k-')
+            plt.savefig(f'plots/beta_means/beta_means_{ii}.png', dpi=300)
+            plt.close()
+
+            plt.figure()
+            plt.plot(range(ii+1), medians, 'k-')
+            plt.savefig(f'plots/beta_medians/beta_medians_{ii}.png', dpi=300)
+            plt.close()
+
+            plt.figure()
+            plt.plot(range(ii+1), cvs, 'k-')
+            plt.savefig(f'plots/beta_cvs/beta_cvs_{ii}.png', dpi=300)
+            plt.close()
+
+            plt.figure()
+            plt.plot(range(ii+1), frac_lt_zero, 'k-')
+            plt.savefig(f'plots/beta_frac_lt_zero/beta_frac_lt_zero_{ii}.png', dpi=300)
+            plt.close()
+
+            with open(f'alphabets/basic_round{ii}.txt', 'w') as fout:
+                first = True
+                for token in alphabet:
+                    if not first:
+                        fout.write('\n')
+                    fout.write(token)
+                    first = False
+            

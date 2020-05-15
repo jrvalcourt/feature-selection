@@ -41,7 +41,7 @@ def yield_kmers(files, K, verbose=False):
 # a generator that concatenates a bunch of files and yields them as a series 
 # of k-mers consisting of just uppercase letters
 def yield_kmers_corpus(corpus, K, verbose=False):
-    for ii in range(len(corpus) - K):
+    for ii in range(len(corpus) - K + 1):
         yield corpus[ii:ii+K]
 
 # a generator that concatenates a bunch of files and yields them as a series 
@@ -100,18 +100,26 @@ def count_kmers(files, maxK, verbose=False):
 def count_kmers_corpus(corpus, maxK, verbose=False):
     counts = {}
     ks = list(np.array(range(maxK)) + 1)
-    newks = ks.copy()
-    for k in ks:
-        if not k//2 in newks:
-            newks.append(k//2)
-    ks = sorted(newks)
     for ii in ks:
         counts[ii] = {}
     total_kmers = 0
+    final_kmer = None 
     for kmer in yield_kmers_corpus(corpus, maxK, verbose=verbose):
+        final_kmer = kmer
         total_kmers += 1
         for ii in ks:
             add_to_count_dict(counts[ii], kmer[:ii])
+    print(final_kmer)
+    for ii in range(len(final_kmer)):
+        if ii == 0:
+            continue
+        for jj in range(len(final_kmer) - ii + 1):
+            if jj == 0:
+                continue
+            print(ii, jj)
+            temp = final_kmer[ii:ii+jj]
+            print(temp)
+            add_to_count_dict(counts[len(temp)], temp)
     return counts, total_kmers
 
 # retrieve the count associated with the given kmer
