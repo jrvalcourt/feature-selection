@@ -1,4 +1,6 @@
 gutenberg/*
+output*
+data/*
 test_sets/*
 test_set.txt.gz
 plots/*

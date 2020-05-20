@@ -5,6 +5,7 @@ from count_and_score_kmers import get_count
 from count_and_score_kmers import count_kmers_corpus
 from build_markov_chain import load_alphabet
 from build_markov_chain import build_markov_chain_corpus
+from build_markov_chain import norm_transition_counts
 import sys
 import pickle
 import os
@@ -12,6 +13,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from numpy import linalg as LA
 
 def candidate_breaks(log_p_trace, offset):
     log_p_trace = np.insert(log_p_trace, 0, [0] * offset)
@@ -88,6 +90,15 @@ def replace_token_in_corpus(corpus, new_token):
             corpus[ii:ii+len(new_token)] = [''.join(new_token)]
     return corpus
 
+def tokenize_corpus(corpus, alphabet):
+    for ii in range(len(alphabet)):
+        curr_token = alphabet[ii]
+        corpus = replace_token_in_corpus(corpus, curr_token)
+    return corpus
+
+def alphabet2strings(n):
+    return [''.join(x) for x in n]
+
 if __name__ == '__main__':
     input_file = sys.argv[1]
     alphabet_file = sys.argv[2]
@@ -96,8 +107,7 @@ if __name__ == '__main__':
     alphabet = load_alphabet(alphabet_file)
     corpus = [x for x in yield_all_text([input_file])]
 
-    save_points = [0, 1, 2, 5, 10, 20, 50, 75, 100, 125, 150, 175, 200, 300, 400, 
-                   500, 600, 750, 1000, 1500, 2000]
+    save_points = [0, 1, 2, 5, 10, 20, 50, 75]
 
     # lists to hold the descriptive stats at each round
     stds = []
@@ -105,19 +115,27 @@ if __name__ == '__main__':
     medians = []
     cvs = []
     frac_lt_zero = []
+    eigvals = []
 
     ii = -1
     while True:
+
+        # get ready for this round
         plt.close()
         ii += 1
-        char2idx = get_char2idx(alphabet)
-        counts, total_kmers = count_kmers_corpus(corpus, maxK, alphabet)
+
+        char2idx = get_char2idx(alphabet2strings(alphabet))
+        counts, total_kmers = count_kmers_corpus(corpus, maxK, alphabet2strings(alphabet))
         results = score_kmers_corpus(corpus, maxK, counts, total_kmers)
+        transition_counts = build_markov_chain_corpus(corpus, alphabet2strings(alphabet))
+        trans_mat = norm_transition_counts(transition_counts)
+        w, _ = LA.eig(trans_mat)
+        realw = sorted([x.real for x in w], reverse=True)
         breaks = candidate_breaks(results, maxK//2)
-        new_token, n, betas = guess_next_token(corpus, breaks, alphabet, 
+        new_token, n, betas = guess_next_token(corpus, breaks, alphabet2strings(alphabet), 
                 counts, total_kmers)
         corpus = replace_token_in_corpus(corpus, new_token)
-        alphabet.append(''.join(new_token))
+        alphabet.append(new_token)
         print(ii, new_token, n)
         sys.stdout.flush()
 
@@ -128,8 +146,9 @@ if __name__ == '__main__':
         medians.append(np.median(betas))
         cvs.append(np.std(betas) / np.mean(betas))
         frac_lt_zero.append(np.sum(betas < 0)/len(betas))
+        eigvals.append(realw)
 
-        if (ii in save_points) or (ii % 1000 == 0):
+        if (ii in save_points) or (ii % 100 == 0):
             plt.figure(figsize=(12,6))
             plt.hist(betas, bins=np.linspace(-4, 20, num=100))
             plt.savefig(f'plots/beta_hists/beta_hist_{ii}.png', dpi=300)
@@ -163,11 +182,20 @@ if __name__ == '__main__':
             plt.savefig(f'plots/beta_frac_lt_zero/beta_frac_lt_zero_{ii}.png', dpi=300)
             plt.close()
 
+            plt.figure()
+            plt.plot(range(ii+1), [x[1] for x in eigvals], 'k-')
+            plt.savefig(f'plots/second_eigval/second_eigval_{ii}.png', dpi=300)
+            plt.close()
+
             with open(f'alphabets/basic_round{ii}.txt', 'w') as fout:
                 first = True
                 for token in alphabet:
                     if not first:
                         fout.write('\n')
-                    fout.write(token)
+                    fout.write(''.join(token))
                     first = False
             
+            pickle.dump(alphabet,
+                    open(f'alphabets/basic_round{ii}.pkl', 'wb'))
+            pickle.dump((stds, means, medians, cvs, frac_lt_zero, eigvals),
+                    open(f'data/round{ii}.pkl', 'wb'))

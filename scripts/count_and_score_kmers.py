@@ -109,16 +109,13 @@ def count_kmers_corpus(corpus, maxK, verbose=False):
         total_kmers += 1
         for ii in ks:
             add_to_count_dict(counts[ii], kmer[:ii])
-    print(final_kmer)
     for ii in range(len(final_kmer)):
         if ii == 0:
             continue
         for jj in range(len(final_kmer) - ii + 1):
             if jj == 0:
                 continue
-            print(ii, jj)
             temp = final_kmer[ii:ii+jj]
-            print(temp)
             add_to_count_dict(counts[len(temp)], temp)
     return counts, total_kmers
 
